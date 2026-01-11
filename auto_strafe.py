@@ -150,16 +150,28 @@ class AutoStrafe:
     
     def enable(self):
         """Enable auto strafe"""
+        current_time = time.time()
+        if current_time - self.last_toggle_time < 0.3:  # 300ms debounce
+            return
+        self.last_toggle_time = current_time
         self.enabled = True
         print(f"\n>>> ENABLED <<<")
     
     def disable(self):
         """Disable auto strafe"""
+        current_time = time.time()
+        if current_time - self.last_toggle_time < 0.3:  # 300ms debounce
+            return
+        self.last_toggle_time = current_time
         self.enabled = False
         print(f"\n>>> DISABLED <<<")
     
     def toggle(self):
         """Toggle auto strafe on/off"""
+        current_time = time.time()
+        if current_time - self.last_toggle_time < 0.3:  # 300ms debounce
+            return
+        self.last_toggle_time = current_time
         if self.enabled:
             self.disable()
         else:

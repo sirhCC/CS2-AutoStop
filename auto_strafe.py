@@ -16,12 +16,12 @@ class AutoStrafe:
         self.human_mode = True  # Anti-detection mode
         self.success_rate = 0.95  # 95% accuracy (miss 5% of counter-strafes)
         self.counter_strafe_count = 0
-        self.mouse1_stop = True  # Auto stop when shooting
+        self.mode = 'release'  # 'release' or 'mouse1'
         self.last_toggle_time = 0  # Prevent rapid toggles
     
     def on_key_release(self, key):
         """Handle key release and counter-strafe"""
-        if not self.enabled:
+        if not self.enabled or self.mode != 'release':
             return
         
         # Don't counter-strafe if jumping (bunny hopping)
@@ -85,7 +85,7 @@ class AutoStrafe:
     
     def on_mouse1_press(self):
         """Auto counter-strafe when shooting"""
-        if not self.enabled or not self.mouse1_stop:
+        if not self.enabled or self.mode != 'mouse1':
             return
         
         # Don't counter-strafe if jumping
@@ -183,27 +183,31 @@ class AutoStrafe:
         status = "ON" if self.human_mode else "OFF"
         print(f"\n>>> HUMAN MODE: {status} <<<")
     
-    def toggle_mouse1_stop(self):
-        """Toggle mouse1 auto-stop"""
-        self.mouse1_stop = not self.mouse1_stop
-        status = "ON" if self.mouse1_stop else "OFF"
-        print(f"\n>>> MOUSE1 STOP: {status} <<<")
+    def toggle_mode(self):
+        """Toggle between release mode and mouse1 mode"""
+        if self.mode == 'release':
+            self.mode = 'mouse1'
+            print(f"\n>>> MODE: MOUSE1 (shoot to stop) <<<")
+        else:
+            self.mode = 'release'
+            print(f"\n>>> MODE: KEY RELEASE (release to stop) <<<")
     
     def start(self):
         """Start the script"""
         print("=" * 50)
         print("CS2 AUTO STRAFE")
         print("=" * 50)
-        print("Release a movement key → Auto tap opposite to stop")
-        print("Click Mouse1 while moving → Auto stop to shoot")
+        print("Two modes:")
+        print("  RELEASE: Auto stop when releasing movement keys")
+        print("  MOUSE1: Auto stop when clicking to shoot")
         print("\nControls:")
         print("- P: Pause/Resume")
         print("- PAGE UP: Enable | PAGE DOWN: Disable")
         print("- H: Toggle Human Mode (anti-detection)")
-        print("- M: Toggle Mouse1 Auto-Stop")
+        print("- M: Switch Mode (Release ↔ Mouse1)")
         print("- END: Exit")
         print("=" * 50)
-        print("Status: ENABLED | Human: ON | Mouse1: ON")
+        print("Status: ENABLED | Human: ON | Mode: RELEASE")
         print("=" * 50)
         
         self.running = True
@@ -226,7 +230,7 @@ class AutoStrafe:
             print("Mouse1 hook: ACTIVE")
         except Exception as e:
             print(f"Mouse1 hook: FAILED ({e})")
-            self.mouse1_stop = False
+            self.mode = 'release'  # Fallback to release mode
         
         # Pause/Resume key
         keyboard.on_press_key('p', lambda _: self.toggle())
@@ -234,8 +238,8 @@ class AutoStrafe:
         # Human mode toggle
         keyboard.on_press_key('h', lambda _: self.toggle_human_mode())
         
-        # Mouse1 stop toggle
-        keyboard.on_press_key('m', lambda _: self.toggle_mouse1_stop())
+        # Mode toggle
+        keyboard.on_press_key('m', lambda _: self.toggle_mode())
         
         # Enable/Disable keys
         keyboard.on_press_key('page up', lambda _: self.enable())

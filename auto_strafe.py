@@ -15,6 +15,7 @@ class AutoStrafe:
         self.human_mode = True  # Anti-detection mode
         self.success_rate = 0.95  # 95% accuracy (miss 5% of counter-strafes)
         self.counter_strafe_count = 0
+        self.mouse1_stop = True  # Auto stop when shooting
     
     def on_key_release(self, key):
         """Handle key release and counter-strafe"""
@@ -80,6 +81,71 @@ class AutoStrafe:
         """Track when keys are pressed for peek detection"""
         self.last_key_time[key] = time.time()
     
+    def on_mouse1_press(self):
+        """Auto counter-strafe when shooting"""
+        if not self.enabled or not self.mouse1_stop:
+            return
+        
+        # Don't counter-strafe if jumping
+        if keyboard.is_pressed('space'):
+            return
+        
+        # Find which movement keys are currently pressed
+        moving_keys = []
+        if keyboard.is_pressed('a'):
+            moving_keys.append('a')
+        if keyboard.is_pressed('d'):
+            moving_keys.append('d')
+        if keyboard.is_pressed('w'):
+            moving_keys.append('w')
+        if keyboard.is_pressed('s'):
+            moving_keys.append('s')
+        
+        if not moving_keys:
+            return  # Not moving
+        
+        # Counter-strafe the movement
+        def do_shoot_stop():
+            # Human-like: Occasionally miss (same as key release)
+            if self.human_mode and random.random() > self.success_rate:
+                return
+            
+            # Tiny delay for realism
+            time.sleep(random.uniform(0.005, 0.015))
+            
+            # Re-check if still moving (user might have already released)
+            still_moving = []
+            if keyboard.is_pressed('a'):
+                still_moving.append('a')
+            if keyboard.is_pressed('d'):
+                still_moving.append('d')
+            if keyboard.is_pressed('w'):
+                still_moving.append('w')
+            if keyboard.is_pressed('s'):
+                still_moving.append('s')
+            
+            if not still_moving:
+                return
+            
+            # Counter-strafe all active movement directions
+            opposites = {'a': 'd', 'd': 'a', 'w': 's', 's': 'w'}
+            duration = random.uniform(0.025, 0.080)
+            
+            for key in still_moving:
+                opposite = opposites[key]
+                keyboard.press(opposite)
+            
+            time.sleep(duration)
+            
+            for key in still_moving:
+                opposite = opposites[key]
+                keyboard.release(opposite)
+            
+            print(f"Stop [shoot]: {', '.join([opposites[k].upper() for k in still_moving])}")
+            self.counter_strafe_count += 1
+        
+        threading.Thread(target=do_shoot_stop, daemon=True).start()
+    
     def enable(self):
         """Enable auto strafe"""
         self.enabled = True
@@ -103,19 +169,27 @@ class AutoStrafe:
         status = "ON" if self.human_mode else "OFF"
         print(f"\n>>> HUMAN MODE: {status} <<<")
     
+    def toggle_mouse1_stop(self):
+        """Toggle mouse1 auto-stop"""
+        self.mouse1_stop = not self.mouse1_stop
+        status = "ON" if self.mouse1_stop else "OFF"
+        print(f"\n>>> MOUSE1 STOP: {status} <<<")
+    
     def start(self):
         """Start the script"""
         print("=" * 50)
         print("CS2 AUTO STRAFE")
         print("=" * 50)
         print("Release a movement key → Auto tap opposite to stop")
+        print("Click Mouse1 while moving → Auto stop to shoot")
         print("\nControls:")
         print("- P: Pause/Resume")
         print("- PAGE UP: Enable | PAGE DOWN: Disable")
         print("- H: Toggle Human Mode (anti-detection)")
+        print("- M: Toggle Mouse1 Auto-Stop")
         print("- END: Exit")
         print("=" * 50)
-        print("Status: ENABLED | Human Mode: ON")
+        print("Status: ENABLED | Human: ON | Mouse1: ON")
         print("=" * 50)
         
         self.running = True
@@ -132,11 +206,28 @@ class AutoStrafe:
         keyboard.on_release_key('w', lambda _: self.on_key_release('w'))
         keyboard.on_release_key('s', lambda _: self.on_key_release('s'))
         
+        # Hook mouse1 (left click)
+        try:
+            from pynput import mouse
+            def on_click(x, y, button, pressed):
+                if button == mouse.Button.left and pressed:
+                    self.on_mouse1_press()
+            
+            listener = mouse.Listener(on_click=on_click)
+            listener.start()
+            print("Mouse1 hook: ACTIVE")
+        except ImportError:
+            print("Mouse1 hook: FAILED (install pynput: pip install pynput)")
+            self.mouse1_stop = False
+        
         # Pause/Resume key
         keyboard.on_press_key('p', lambda _: self.toggle())
         
         # Human mode toggle
         keyboard.on_press_key('h', lambda _: self.toggle_human_mode())
+        
+        # Mouse1 stop toggle
+        keyboard.on_press_key('m', lambda _: self.toggle_mouse1_stop())
         
         # Enable/Disable keys
         keyboard.on_press_key('page up', lambda _: self.enable())

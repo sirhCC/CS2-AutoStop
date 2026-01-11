@@ -12,6 +12,9 @@ class AutoStrafe:
         self.enabled = True
         self.running = False
         self.last_key_time = {}  # Track when each key was pressed
+        self.human_mode = True  # Anti-detection mode
+        self.success_rate = 0.95  # 95% accuracy (miss 5% of counter-strafes)
+        self.counter_strafe_count = 0
     
     def on_key_release(self, key):
         """Handle key release and counter-strafe"""
@@ -26,8 +29,14 @@ class AutoStrafe:
         opposite = {'a': 'd', 'd': 'a', 'w': 's', 's': 'w'}[key]
         
         def do_counter_strafe():
-            # Longer delay to detect quick direction switches (peeking)
-            time.sleep(0.015)
+            # Human-like: Occasionally miss counter-strafes (not perfect)
+            if self.human_mode and random.random() > self.success_rate:
+                print(f"Miss (human)")
+                return
+            
+            # Human-like: Variable reaction time (10-25ms instead of fixed)
+            reaction_delay = random.uniform(0.010, 0.025)
+            time.sleep(reaction_delay)
             
             # If user is pressing any movement key or jumping, don't counter-strafe
             if keyboard.is_pressed('a') or keyboard.is_pressed('d') or keyboard.is_pressed('w') or keyboard.is_pressed('s') or keyboard.is_pressed('space'):
@@ -41,13 +50,28 @@ class AutoStrafe:
                 if time_since_opposite < 0.2:
                     return
             
-            # Tap opposite to stop
-            duration = random.uniform(0.030, 0.075)
+            # Human-like: More varied counter-strafe duration (20-90ms)
+            duration = random.uniform(0.020, 0.090)
+            
+            # Human-like: Occasionally do imperfect double-tap (5% chance)
+            double_tap = self.human_mode and random.random() < 0.05
+            
             keyboard.press(opposite)
             time.sleep(duration)
             keyboard.release(opposite)
             
-            print(f"Stop: {opposite.upper()}")
+            # Human-like: Small random delay between taps
+            if double_tap:
+                time.sleep(random.uniform(0.010, 0.030))
+                mini_tap = random.uniform(0.015, 0.040)
+                keyboard.press(opposite)
+                time.sleep(mini_tap)
+                keyboard.release(opposite)
+                print(f"Stop: {opposite.upper()} [double]")
+            else:
+                print(f"Stop: {opposite.upper()}")
+            
+            self.counter_strafe_count += 1
         
         # Run in thread so it doesn't block user input
         threading.Thread(target=do_counter_strafe, daemon=True).start()
@@ -73,6 +97,12 @@ class AutoStrafe:
         else:
             self.enable()
     
+    def toggle_human_mode(self):
+        """Toggle human-like randomization"""
+        self.human_mode = not self.human_mode
+        status = "ON" if self.human_mode else "OFF"
+        print(f"\n>>> HUMAN MODE: {status} <<<")
+    
     def start(self):
         """Start the script"""
         print("=" * 50)
@@ -82,9 +112,10 @@ class AutoStrafe:
         print("\nControls:")
         print("- P: Pause/Resume")
         print("- PAGE UP: Enable | PAGE DOWN: Disable")
+        print("- H: Toggle Human Mode (anti-detection)")
         print("- END: Exit")
         print("=" * 50)
-        print("Status: ENABLED")
+        print("Status: ENABLED | Human Mode: ON")
         print("=" * 50)
         
         self.running = True
@@ -103,6 +134,9 @@ class AutoStrafe:
         
         # Pause/Resume key
         keyboard.on_press_key('p', lambda _: self.toggle())
+        
+        # Human mode toggle
+        keyboard.on_press_key('h', lambda _: self.toggle_human_mode())
         
         # Enable/Disable keys
         keyboard.on_press_key('page up', lambda _: self.enable())

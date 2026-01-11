@@ -1,4 +1,4 @@
-# CS2 Auto-Strafe Script
+# CS2 Counter Strafe Script
 
 This script automatically counter-strafes in CS2 by tapping the opposite movement key when you release a directional key.
 

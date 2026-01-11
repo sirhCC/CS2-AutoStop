@@ -3,6 +3,7 @@ CS2 Auto Strafe - Counter-strafe to stop faster and be more accurate
 """
 
 import keyboard
+import mouse
 import time
 import threading
 import random
@@ -16,6 +17,7 @@ class AutoStrafe:
         self.success_rate = 0.95  # 95% accuracy (miss 5% of counter-strafes)
         self.counter_strafe_count = 0
         self.mouse1_stop = True  # Auto stop when shooting
+        self.last_toggle_time = 0  # Prevent rapid toggles
     
     def on_key_release(self, key):
         """Handle key release and counter-strafe"""
@@ -208,16 +210,10 @@ class AutoStrafe:
         
         # Hook mouse1 (left click)
         try:
-            from pynput import mouse
-            def on_click(x, y, button, pressed):
-                if button == mouse.Button.left and pressed:
-                    self.on_mouse1_press()
-            
-            listener = mouse.Listener(on_click=on_click)
-            listener.start()
+            mouse.on_button(self.on_mouse1_press, buttons=['left'], types=['down'])
             print("Mouse1 hook: ACTIVE")
-        except ImportError:
-            print("Mouse1 hook: FAILED (install pynput: pip install pynput)")
+        except Exception as e:
+            print(f"Mouse1 hook: FAILED ({e})")
             self.mouse1_stop = False
         
         # Pause/Resume key

@@ -13,8 +13,7 @@ class AutoStrafe:
         self.enabled = True
         self.running = False
         self.last_key_time = {}  # Track when each key was pressed
-        self.human_mode = True  # Anti-detection mode
-        self.success_rate = 0.95  # 95% accuracy (miss 5% of counter-strafes)
+        self.human_mode = True  # Anti-detection mode (randomized timing)
         self.counter_strafe_count = 0
         self.mode = 'release'  # 'release' or 'mouse1'
         self.last_toggle_time = 0  # Prevent rapid toggles
@@ -32,13 +31,11 @@ class AutoStrafe:
         opposite = {'a': 'd', 'd': 'a', 'w': 's', 's': 'w'}[key]
         
         def do_counter_strafe():
-            # Human-like: Occasionally miss counter-strafes (not perfect)
-            if self.human_mode and random.random() > self.success_rate:
-                print(f"Miss (human)")
-                return
-            
-            # Human-like: Variable reaction time (10-25ms instead of fixed)
-            reaction_delay = random.uniform(0.010, 0.025)
+            # Longer delay to better detect direction changes
+            if self.human_mode:
+                reaction_delay = random.uniform(0.020, 0.035)
+            else:
+                reaction_delay = 0.025
             time.sleep(reaction_delay)
             
             # If user is pressing any movement key or jumping, don't counter-strafe
@@ -49,31 +46,21 @@ class AutoStrafe:
             current_time = time.time()
             if opposite in self.last_key_time:
                 time_since_opposite = current_time - self.last_key_time[opposite]
-                # If opposite was pressed within 200ms, likely peeking - don't counter-strafe
-                if time_since_opposite < 0.2:
+                # If opposite was pressed within 250ms, likely peeking - don't counter-strafe
+                if time_since_opposite < 0.25:
                     return
             
-            # Human-like: More varied counter-strafe duration (20-90ms)
-            duration = random.uniform(0.020, 0.090)
-            
-            # Human-like: Occasionally do imperfect double-tap (5% chance)
-            double_tap = self.human_mode and random.random() < 0.05
+            # Randomized counter-strafe duration for anti-detection
+            if self.human_mode:
+                duration = random.uniform(0.030, 0.085)
+            else:
+                duration = 0.050
             
             keyboard.press(opposite)
             time.sleep(duration)
             keyboard.release(opposite)
             
-            # Human-like: Small random delay between taps
-            if double_tap:
-                time.sleep(random.uniform(0.010, 0.030))
-                mini_tap = random.uniform(0.015, 0.040)
-                keyboard.press(opposite)
-                time.sleep(mini_tap)
-                keyboard.release(opposite)
-                print(f"Stop: {opposite.upper()} [double]")
-            else:
-                print(f"Stop: {opposite.upper()}")
-            
+            print(f"Stop: {opposite.upper()}")
             self.counter_strafe_count += 1
         
         # Run in thread so it doesn't block user input
@@ -108,12 +95,11 @@ class AutoStrafe:
         
         # Counter-strafe the movement
         def do_shoot_stop():
-            # Human-like: Occasionally miss (same as key release)
-            if self.human_mode and random.random() > self.success_rate:
-                return
-            
-            # Tiny delay for realism
-            time.sleep(random.uniform(0.005, 0.015))
+            # Small delay for realism
+            if self.human_mode:
+                time.sleep(random.uniform(0.008, 0.018))
+            else:
+                time.sleep(0.012)
             
             # Re-check if still moving (user might have already released)
             still_moving = []

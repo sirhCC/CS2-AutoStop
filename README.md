@@ -88,7 +88,7 @@ Adjustable parameters in the script:
 
 ## Important Notes
 
-⚠️ **Warning**: Using automation scripts in online games may violate terms of service and result in bans. **Use at your own risk**, preferably in offline/practice modes only.
+⚠️ **Warning**: Using automation scripts in online games may violate terms of service and result in bans. **Use at your own risk**
 
 ## Requirements
 

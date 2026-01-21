@@ -21,38 +21,51 @@ class AutoStrafe:
     def on_key_release(self, key):
         """Handle key release and counter-strafe"""
         if not self.enabled or self.mode != 'release':
+            print(f"Release {key.upper()}: Skipped (enabled={self.enabled}, mode={self.mode})")
             return
         
-        # Don't counter-strafe if jumping (bunny hopping)
-        if keyboard.is_pressed('space'):
+        # Check how long the key was held
+        if key not in self.last_key_time:
+            print(f"Release {key.upper()}: No press time recorded")
+            return
+        
+        release_time = time.time()
+        hold_duration = release_time - self.last_key_time[key]
+        print(f"Release {key.upper()}: Press={self.last_key_time[key]:.3f}, Release={release_time:.3f}, Held for {hold_duration:.3f}s")
+        
+        # Reset the time so next press is fresh
+        self.last_key_time[key] = 0
+        
+        # Only counter-strafe if key was held for more than 0.35 seconds
+        if hold_duration < 0.35:
+            print(f"  -> Too short (need 0.35s+)")
             return
         
         # Get opposite key
         opposite = {'a': 'd', 'd': 'a', 'w': 's', 's': 'w'}[key]
         
+        # ONLY check if opposite key is already pressed - if so, user is switching direction
+        if keyboard.is_pressed(opposite):
+            print(f"  -> Opposite key {opposite.upper()} pressed, skipping")
+            return
+        
+        print(f"  -> Counter-strafing with {opposite.upper()}")
+        
         def do_counter_strafe():
-            # Longer delay to better detect direction changes
+            # Small delay to catch direction changes
             if self.human_mode:
-                reaction_delay = random.uniform(0.020, 0.035)
+                reaction_delay = random.uniform(0.003, 0.010)
             else:
-                reaction_delay = 0.025
+                reaction_delay = 0.006
             time.sleep(reaction_delay)
             
-            # If user is pressing any movement key or jumping, don't counter-strafe
+            # After delay, check if user started moving in any direction
             if keyboard.is_pressed('a') or keyboard.is_pressed('d') or keyboard.is_pressed('w') or keyboard.is_pressed('s') or keyboard.is_pressed('space'):
                 return
             
-            # Check if this is a quick peek (opposite key was pressed recently)
-            current_time = time.time()
-            if opposite in self.last_key_time:
-                time_since_opposite = current_time - self.last_key_time[opposite]
-                # If opposite was pressed within 250ms, likely peeking - don't counter-strafe
-                if time_since_opposite < 0.25:
-                    return
-            
-            # Randomized counter-strafe duration for anti-detection
+            # Randomized counter-strafe duration
             if self.human_mode:
-                duration = random.uniform(0.030, 0.085)
+                duration = random.uniform(0.030, 0.075)
             else:
                 duration = 0.050
             
@@ -60,15 +73,18 @@ class AutoStrafe:
             time.sleep(duration)
             keyboard.release(opposite)
             
-            print(f"Stop: {opposite.upper()}")
+            print(f"Stop: {opposite.upper()} (held {hold_duration:.2f}s)")
             self.counter_strafe_count += 1
         
         # Run in thread so it doesn't block user input
         threading.Thread(target=do_counter_strafe, daemon=True).start()
     
     def on_key_press(self, key):
-        """Track when keys are pressed for peek detection"""
-        self.last_key_time[key] = time.time()
+        """Track when keys are pressed for hold duration detection"""
+        # Only record the first press, not repeated presses
+        if key not in self.last_key_time or self.last_key_time[key] == 0:
+            self.last_key_time[key] = time.time()
+            print(f"Press: {key.upper()} at {self.last_key_time[key]:.3f}")
     
     def on_mouse1_press(self):
         """Auto counter-strafe when shooting"""
